@@ -2,7 +2,7 @@
 #define MyAppNameShort "NotepadPlusPlusSharp"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "NotepadPlusPlusSharp"
-#define MyAppURL "https://github.com/NotepadPlusPlusSharp"
+#define MyAppURL "https://github.com/ptraced/NotepadPlusPlusSharp"
 #define MyAppExeName "NotepadPlusPlusSharp.exe"
 #define ProjectDir ".."
 #define PublishDir "..\bin\Release\net10.0-windows\win-x64\publish"
