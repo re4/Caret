@@ -6,7 +6,7 @@ A fast, dark-mode text editor for Windows built from scratch in C# / WPF.
 
 In early 2026, [Kaspersky reported](https://securelist.com/notepad-supply-chain-attack/118708/) that the Notepad++ update infrastructure had been compromised for months — from roughly June through December 2025. Attackers pushed malicious updates to real users, targeting government orgs, financial institutions, and individuals across multiple countries. The infection chains rotated constantly, making the whole thing hard to detect.
 
-After reading that, I didn't feel great about running Notepad++ anymore. So I built my own replacement. NNotepadPlusPlusSharp # does everything I actually used Notepad++ for, without depending on someone else's update pipeline.
+After reading that, I didn't feel great about running Notepad++ anymore. So I built my own replacement. NotepadPlusPlusSharp # does everything I actually used Notepad++ for, without depending on someone else's update pipeline.
 
 ## Features
 
