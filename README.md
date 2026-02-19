@@ -59,10 +59,12 @@ After reading that, I didn't feel great about running Notepad++ anymore. So I bu
 - `F3 / Shift+F3` — find next / previous
 
 **Installer**
-- Windows installer (Inno Setup)
+- Custom installer built from scratch in C# / WPF — no third-party installer frameworks (no Inno Setup, no WiX, no NSIS)
 - Desktop shortcut
 - Start menu entry
 - Right-click context menu: "Edit with Caret" on any file or folder
+- Add/Remove Programs registration with full uninstaller
+- Silent uninstall support (`/uninstall /quiet`)
 
 ## Build
 
@@ -79,13 +81,13 @@ To publish a self-contained exe:
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
-To build the installer, install [Inno Setup 6](https://jrsoftware.org/isdl.php) and run:
+To build the installer:
 
 ```
 .\build-installer.ps1
 ```
 
-The installer will be in the `Output/` folder.
+The installer will be in the `Output/` folder. No external tools needed — the installer is a self-contained C# WPF app that gets compiled alongside Caret. It handles file extraction, shortcuts, context menu registration, and uninstallation using only Windows COM and .NET APIs.
 
 ## License
 

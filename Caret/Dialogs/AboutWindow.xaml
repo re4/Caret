@@ -17,6 +17,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" FontSize="28" FontWeight="Bold" 
@@ -37,14 +38,23 @@
             <Run Text="Text editor component: ICSharpCode.AvalonEdit" Foreground="#808080"/>
         </TextBlock>
 
-        <TextBlock Grid.Row="4" FontSize="12" Foreground="#808080" 
+        <TextBlock Grid.Row="4" FontSize="13" Margin="0,0,0,8">
+            <Run Text="GitHub: " Foreground="#808080"/>
+            <Hyperlink x:Name="GitHubLink" NavigateUri="https://github.com/re4/Caret"
+                       RequestNavigate="Hyperlink_RequestNavigate"
+                       Foreground="#007ACC" TextDecorations="None">
+                https://github.com/re4/Caret
+            </Hyperlink>
+        </TextBlock>
+
+        <TextBlock Grid.Row="5" FontSize="12" Foreground="#808080" 
                    Margin="0,8,0,16" TextWrapping="Wrap">
             Caret is a feature-rich text editor featuring syntax highlighting 
             for 20+ languages, multi-tab editing, find and replace with regex 
             support, and a modern dark theme.
         </TextBlock>
 
-        <Button Grid.Row="5" Content="OK" HorizontalAlignment="Right" 
+        <Button Grid.Row="6" Content="OK" HorizontalAlignment="Right" 
                 Padding="24,6" Click="OK_Click" IsDefault="True" IsCancel="True">
             <Button.Style>
                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">

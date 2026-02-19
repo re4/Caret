@@ -110,6 +110,8 @@
             </MenuItem>
 
             <MenuItem Header="_Help">
+                <MenuItem Header="Check for _Updates..." Click="CheckForUpdates_Click"/>
+                <Separator/>
                 <MenuItem Header="_About Caret" Click="About_Click"/>
             </MenuItem>
         </Menu>

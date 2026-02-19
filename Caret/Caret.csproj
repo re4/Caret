@@ -11,7 +11,7 @@
     <RootNamespace>Caret</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>App.ico</ApplicationIcon>
-    <Version>1.1.0</Version>
+    <Version>1.1.2</Version>
     <Product>Caret</Product>
     <Company>Caret</Company>
     <Description>A modern dark-mode text editor built in C# / WPF</Description>
@@ -19,6 +19,15 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="CaretInstaller\**" />
+    <Page Remove="CaretInstaller\**" />
+    <Resource Remove="CaretInstaller\**" />
+    <None Remove="CaretInstaller\**" />
+    <EmbeddedResource Remove="CaretInstaller\**" />
+    <ApplicationDefinition Remove="CaretInstaller\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />

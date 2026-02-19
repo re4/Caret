@@ -63,6 +63,8 @@ public partial class MainWindow : Window
 
         if (_documents.Count == 0)
             CreateNewDocument();
+
+        CheckForUpdatesSilent();
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)
@@ -1341,6 +1343,49 @@ public partial class MainWindow : Window
     {
         RecentFilesManager.ClearAll();
         LoadRecentFiles();
+    }
+
+    private async void CheckForUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        var result = await UpdateChecker.CheckAsync();
+        if (result == null)
+        {
+            MessageBox.Show("Could not check for updates. Please try again later.",
+                "Update Check", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (result.Available)
+        {
+            var answer = MessageBox.Show(
+                $"A new version of Caret is available!\n\n" +
+                $"Current version: {result.CurrentVersion}\n" +
+                $"Latest version: {result.LatestVersion}\n\n" +
+                $"Would you like to open the GitHub releases page to download it?",
+                "Update Available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (answer == MessageBoxResult.Yes)
+                UpdateChecker.OpenReleasesPage();
+        }
+        else
+        {
+            MessageBox.Show($"You're running the latest version ({result.CurrentVersion}).",
+                "No Updates", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private async void CheckForUpdatesSilent()
+    {
+        var result = await UpdateChecker.CheckAsync();
+        if (result is { Available: true })
+        {
+            var answer = MessageBox.Show(
+                $"A new version of Caret is available!\n\n" +
+                $"Current version: {result.CurrentVersion}\n" +
+                $"Latest version: {result.LatestVersion}\n\n" +
+                $"Would you like to open the GitHub releases page to download it?",
+                "Update Available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (answer == MessageBoxResult.Yes)
+                UpdateChecker.OpenReleasesPage();
+        }
     }
 
     private void About_Click(object sender, RoutedEventArgs e)
