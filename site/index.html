@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caret — A text editor that stays out of your way</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #121212;
+    --bg-card: #1E1E1E;
+    --bg-raised: #252526;
+    --accent: #007ACC;
+    --accent-light: #1C97EA;
+    --text: #CCCCCC;
+    --text-bright: #E8E8E8;
+    --text-dim: #808080;
+    --border: #2D2D30;
+    --green: #6A9955;
+    --orange: #CCA700;
+    --red: #F44747;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-light); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem; height: 52px;
+    background: rgba(18,18,18,.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .logo {
+    font-size: 1.15rem; font-weight: 700; color: var(--text-bright);
+    letter-spacing: .5px;
+  }
+  nav .logo span { color: var(--accent); }
+  nav ul { list-style: none; display: flex; gap: 1.5rem; }
+  nav ul a {
+    color: var(--text-dim); font-size: .875rem; transition: color .15s;
+  }
+  nav ul a:hover { color: var(--text-bright); text-decoration: none; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 6rem 1.5rem 4rem;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(0,122,204,.08), transparent),
+      var(--bg);
+  }
+  .hero h1 {
+    font-size: clamp(2.4rem, 5vw, 3.6rem);
+    font-weight: 700; color: var(--text-bright);
+    line-height: 1.15; max-width: 700px;
+  }
+  .hero .subtitle {
+    margin-top: 1.25rem; font-size: 1.15rem;
+    color: var(--text-dim); max-width: 520px;
+  }
+  .hero .cta-row {
+    margin-top: 2.5rem; display: flex; gap: 1rem; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .7rem 1.6rem; border-radius: 6px;
+    font-size: .95rem; font-weight: 600;
+    border: none; cursor: pointer; transition: background .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+  }
+  .btn-primary:hover { background: var(--accent-light); text-decoration: none; }
+  .btn-ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--text-dim); text-decoration: none; }
+  .hero .version {
+    margin-top: 1.25rem; font-size: .8rem; color: var(--text-dim);
+  }
+
+  /* ── EDITOR MOCKUP ── */
+  .mockup {
+    margin: -2rem auto 0; max-width: 780px; width: 90%;
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 80px rgba(0,0,0,.5);
+  }
+  .mockup-titlebar {
+    background: #2D2D30; padding: .5rem .75rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .mockup-dots { display: flex; gap: 6px; }
+  .mockup-dots span {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--border);
+  }
+  .mockup-tabs {
+    display: flex; gap: 0; margin-left: .75rem;
+  }
+  .mockup-tab {
+    padding: .3rem .85rem; font-size: .75rem; color: var(--text-dim);
+    background: transparent; border-right: 1px solid #3F3F46;
+  }
+  .mockup-tab.active {
+    background: var(--bg-card); color: var(--text-bright);
+  }
+  .mockup-body {
+    background: var(--bg-card); padding: 1rem 0;
+    font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    font-size: .82rem; line-height: 1.7; overflow-x: auto;
+  }
+  .mockup-line {
+    display: flex; padding: 0 1rem;
+  }
+  .mockup-line:hover { background: rgba(255,255,255,.03); }
+  .ln {
+    color: #5A5A5A; width: 2.5rem; text-align: right;
+    padding-right: .75rem; user-select: none; flex-shrink: 0;
+  }
+  .kw { color: #569CD6; }
+  .tp { color: #4EC9B0; }
+  .str { color: #CE9178; }
+  .cm { color: var(--green); }
+  .fn { color: #DCDCAA; }
+  .num { color: #B5CEA8; }
+  .op { color: #D4D4D4; }
+  .mockup-status {
+    background: var(--accent); padding: .25rem .75rem;
+    display: flex; justify-content: space-between;
+    font-size: .7rem; color: #fff;
+  }
+
+  /* ── SECTIONS ── */
+  section { padding: 5rem 1.5rem; }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  .section-label {
+    font-size: .75rem; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); font-weight: 600; margin-bottom: .5rem;
+  }
+  .section-title {
+    font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+    color: var(--text-bright); max-width: 600px;
+  }
+  .section-desc {
+    margin-top: .75rem; color: var(--text-dim);
+    max-width: 540px; font-size: 1rem;
+  }
+
+  /* ── WHY ── */
+  .why {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .why-content {
+    max-width: 640px; margin: 0 auto;
+  }
+  .why-content p {
+    margin-top: 1rem; color: var(--text); font-size: 1.05rem;
+  }
+  .why-content p + p { margin-top: .75rem; }
+
+  /* ── FEATURES ── */
+  .features-grid {
+    margin-top: 3rem;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 1.25rem;
+  }
+  .feature-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.5rem;
+    transition: border-color .2s;
+  }
+  .feature-card:hover { border-color: #444; }
+  .feature-icon {
+    font-size: 1.3rem; margin-bottom: .75rem;
+    width: 40px; height: 40px; display: flex;
+    align-items: center; justify-content: center;
+    background: var(--bg-raised); border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .feature-card h3 {
+    font-size: 1rem; color: var(--text-bright);
+    font-weight: 600; margin-bottom: .4rem;
+  }
+  .feature-card p {
+    font-size: .875rem; color: var(--text-dim); line-height: 1.55;
+  }
+
+  /* ── LANGUAGES ── */
+  .lang-section { border-top: 1px solid var(--border); }
+  .lang-grid {
+    margin-top: 2rem; display: flex; flex-wrap: wrap; gap: .5rem;
+  }
+  .lang-tag {
+    padding: .35rem .85rem; border-radius: 5px;
+    font-size: .8rem; font-weight: 500;
+    background: var(--bg-raised); border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* ── KEYBOARD ── */
+  .kb-section { border-top: 1px solid var(--border); }
+  .kb-grid {
+    margin-top: 2rem;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: .75rem;
+  }
+  .kb-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .6rem .9rem; border-radius: 6px;
+    background: var(--bg-card); border: 1px solid var(--border);
+  }
+  .kb-row span { font-size: .85rem; }
+  .kb-key {
+    font-family: "Cascadia Code", "Consolas", monospace;
+    font-size: .78rem; color: var(--text-dim);
+    background: var(--bg-raised); padding: .2rem .55rem;
+    border-radius: 4px; border: 1px solid var(--border);
+  }
+
+  /* ── INSTALL ── */
+  .install {
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .install .section-title, .install .section-desc {
+    margin-left: auto; margin-right: auto;
+  }
+  .install-options {
+    margin-top: 2.5rem; display: flex; flex-wrap: wrap;
+    gap: 1rem; justify-content: center;
+  }
+  .install-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 2rem 2.5rem;
+    text-align: center; min-width: 220px;
+  }
+  .install-card h3 {
+    font-size: 1rem; color: var(--text-bright);
+    font-weight: 600; margin-bottom: .4rem;
+  }
+  .install-card p {
+    font-size: .8rem; color: var(--text-dim); margin-bottom: 1rem;
+  }
+  .install-card code {
+    display: block; background: var(--bg); padding: .5rem .75rem;
+    border-radius: 5px; font-size: .82rem; color: var(--green);
+    font-family: "Cascadia Code", "Consolas", monospace;
+    border: 1px solid var(--border);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 1.5rem; text-align: center;
+    font-size: .8rem; color: var(--text-dim);
+  }
+  footer a { color: var(--text-dim); }
+  footer a:hover { color: var(--text-bright); }
+  footer .links { display: flex; gap: 1.5rem; justify-content: center; margin-bottom: .75rem; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    nav ul { display: none; }
+    .mockup { width: 95%; }
+    .install-card { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><span>^</span> Caret</div>
+  <ul>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#languages">Languages</a></li>
+    <li><a href="#install">Download</a></li>
+    <li><a href="https://github.com/re4/Caret">GitHub</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>A text editor that opens fast and gets out of your&nbsp;way.</h1>
+  <p class="subtitle">
+    Native Windows app. Dark by default. Remembers everything
+    you had open. No telemetry, no login, no&nbsp;nonsense.
+  </p>
+  <div class="cta-row">
+    <a href="https://github.com/re4/Caret/releases" class="btn btn-primary">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download for Windows
+    </a>
+    <a href="https://github.com/re4/Caret" class="btn btn-ghost">
+      View source
+    </a>
+  </div>
+  <p class="version">v1.1.2 &middot; ~2 MB &middot; Windows 10/11 &middot; GPL-3.0</p>
+
+  <div style="height: 4rem;"></div>
+
+  <!-- EDITOR MOCKUP -->
+  <div class="mockup">
+    <div class="mockup-titlebar">
+      <div class="mockup-dots"><span></span><span></span><span></span></div>
+      <div class="mockup-tabs">
+        <div class="mockup-tab active">Program.cs</div>
+        <div class="mockup-tab">config.json</div>
+        <div class="mockup-tab">notes.md</div>
+      </div>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-line"><span class="ln">1</span><code><span class="kw">using</span> System;</code></div>
+      <div class="mockup-line"><span class="ln">2</span><code></code></div>
+      <div class="mockup-line"><span class="ln">3</span><code><span class="kw">namespace</span> <span class="tp">Caret</span>;</code></div>
+      <div class="mockup-line"><span class="ln">4</span><code></code></div>
+      <div class="mockup-line"><span class="ln">5</span><code><span class="kw">class</span> <span class="tp">Program</span></code></div>
+      <div class="mockup-line"><span class="ln">6</span><code>{</code></div>
+      <div class="mockup-line"><span class="ln">7</span><code>    <span class="kw">static void</span> <span class="fn">Main</span>(<span class="kw">string</span>[] args)</code></div>
+      <div class="mockup-line"><span class="ln">8</span><code>    {</code></div>
+      <div class="mockup-line"><span class="ln">9</span><code>        <span class="cm">// just opens. no splash screen. no tip of the day.</span></code></div>
+      <div class="mockup-line"><span class="ln">10</span><code>        <span class="tp">Console</span>.<span class="fn">WriteLine</span>(<span class="str">"hello, world"</span>);</code></div>
+      <div class="mockup-line"><span class="ln">11</span><code>    }</code></div>
+      <div class="mockup-line"><span class="ln">12</span><code>}</code></div>
+    </div>
+    <div class="mockup-status">
+      <span>Ln 10, Col 42 &nbsp;|&nbsp; 4 selected</span>
+      <span>C# &nbsp;&middot;&nbsp; UTF-8 &nbsp;&middot;&nbsp; CRLF &nbsp;&middot;&nbsp; 100%</span>
+    </div>
+  </div>
+</section>
+
+<!-- WHY -->
+<section class="why" id="why">
+  <div class="why-content">
+    <div class="section-label">Background</div>
+    <h2 class="section-title">Why build another text editor?</h2>
+    <p>
+      In 2025 the Notepad++ update infrastructure was compromised. That was the
+      push to finally write something from scratch — something small, something
+      we could read top to bottom and actually trust.
+    </p>
+    <p>
+      Caret is built with C# and WPF. It's a single executable. No plugins,
+      no extension marketplace, no auto-updater phoning home. You download it,
+      you run it, you edit text. That's the whole deal.
+    </p>
+    <p>
+      It won't replace your IDE. It's not trying to. It's the thing you open
+      when you need to look at a log file, tweak a config, jot something down,
+      or write a quick script. It should open before you finish clicking.
+    </p>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Does what you need. Doesn't do what you don't.</h2>
+    <p class="section-desc">
+      No feature list padded with things every editor has had since 2003.
+      Here's what actually matters.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h3>Session memory</h3>
+        <p>Close the app. Open it tomorrow. All your tabs are still there — unsaved content, cursor positions, scroll offsets, zoom levels. No "save changes?" dialogs.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎨</div>
+        <h3>Syntax highlighting</h3>
+        <p>20+ languages out of the box. Auto-detects the language from file content when there's no extension. No config needed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📑</div>
+        <h3>Tabs that work</h3>
+        <p>Drag and drop files to open them. Right-click tabs for context menus. Close others, close to the right, copy the file path. The obvious stuff, done right.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Find &amp; Replace</h3>
+        <p>Regex, match case, whole word, wrap around. A proper find bar that doesn't fight you. Ctrl+H and go.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📐</div>
+        <h3>Code folding</h3>
+        <p>Collapse blocks in brace-based languages, XML, and HTML. Fold what you don't need. Unfold when you do.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⌨️</div>
+        <h3>Line operations</h3>
+        <p>Duplicate lines, move them up/down, toggle comments, trim whitespace, convert case. The keyboard shortcuts you already know.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔤</div>
+        <h3>Encoding support</h3>
+        <p>Auto-detects UTF-8, UTF-8 BOM, UTF-16 LE/BE, and ANSI. Switch encoding on the fly. Handles line endings too — CRLF, LF, CR.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>No telemetry</h3>
+        <p>Zero network calls. No analytics, no crash reports sent anywhere, no update checks. The editor works offline because it doesn't know what online is.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📌</div>
+        <h3>Right-click integration</h3>
+        <p>The installer adds "Edit with Caret" to your right-click menu. Open any file from Explorer without hunting through Open With dialogs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LANGUAGES -->
+<section class="lang-section" id="languages">
+  <div class="container">
+    <div class="section-label">Languages</div>
+    <h2 class="section-title">Syntax highlighting for the languages you actually use.</h2>
+    <p class="section-desc">
+      Detected automatically from file extension or content.
+    </p>
+    <div class="lang-grid">
+      <span class="lang-tag">C#</span>
+      <span class="lang-tag">C</span>
+      <span class="lang-tag">C++</span>
+      <span class="lang-tag">Python</span>
+      <span class="lang-tag">JavaScript</span>
+      <span class="lang-tag">TypeScript</span>
+      <span class="lang-tag">Java</span>
+      <span class="lang-tag">HTML</span>
+      <span class="lang-tag">CSS</span>
+      <span class="lang-tag">XML</span>
+      <span class="lang-tag">JSON</span>
+      <span class="lang-tag">SQL</span>
+      <span class="lang-tag">PHP</span>
+      <span class="lang-tag">PowerShell</span>
+      <span class="lang-tag">Batch</span>
+      <span class="lang-tag">Markdown</span>
+      <span class="lang-tag">F#</span>
+      <span class="lang-tag">VB.NET</span>
+      <span class="lang-tag">TeX</span>
+      <span class="lang-tag">+ more</span>
+    </div>
+  </div>
+</section>
+
+<!-- SHORTCUTS -->
+<section class="kb-section">
+  <div class="container">
+    <div class="section-label">Keyboard</div>
+    <h2 class="section-title">Shortcuts you already know.</h2>
+    <p class="section-desc">
+      Standard keybindings. No custom chord system to memorize.
+    </p>
+    <div class="kb-grid">
+      <div class="kb-row"><span>Find</span><span class="kb-key">Ctrl+F</span></div>
+      <div class="kb-row"><span>Replace</span><span class="kb-key">Ctrl+H</span></div>
+      <div class="kb-row"><span>Go to line</span><span class="kb-key">Ctrl+G</span></div>
+      <div class="kb-row"><span>Duplicate line</span><span class="kb-key">Ctrl+D</span></div>
+      <div class="kb-row"><span>Move line up</span><span class="kb-key">Alt+Up</span></div>
+      <div class="kb-row"><span>Move line down</span><span class="kb-key">Alt+Down</span></div>
+      <div class="kb-row"><span>Toggle comment</span><span class="kb-key">Ctrl+/</span></div>
+      <div class="kb-row"><span>Zoom in</span><span class="kb-key">Ctrl+Scroll</span></div>
+      <div class="kb-row"><span>New tab</span><span class="kb-key">Ctrl+N</span></div>
+      <div class="kb-row"><span>Close tab</span><span class="kb-key">Ctrl+W</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="install" id="install">
+  <div class="container">
+    <div class="section-label">Get it</div>
+    <h2 class="section-title">Download Caret</h2>
+    <p class="section-desc">
+      Windows 10/11 &middot; x64 &middot; Free and open source.
+    </p>
+    <div class="install-options">
+      <div class="install-card">
+        <h3>Installer</h3>
+        <p>Desktop shortcut + right-click integration</p>
+        <a href="https://github.com/re4/Caret/releases" class="btn btn-primary" style="width:100%; justify-content:center;">
+          Download .exe
+        </a>
+      </div>
+      <div class="install-card">
+        <h3>Build from source</h3>
+        <p>Requires .NET 10 SDK</p>
+        <code>dotnet build</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="links">
+    <a href="https://github.com/re4/Caret">GitHub</a>
+    <a href="https://github.com/re4/Caret/releases">Releases</a>
+    <a href="https://github.com/re4/Caret/issues">Issues</a>
+  </div>
+  <p>&copy; 2026 Caret &middot; GPL-3.0 &middot; Made because Notepad++ scared us.</p>
+</footer>
+
+</body>
+</html>
